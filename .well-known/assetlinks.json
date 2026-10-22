@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.u1ai.thequiet",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7D:0F:52:AB:7F:EA:D2:7F:3F:8A:2F:3A:42:0B:48:8B:1F:B1:9A:3D:24:9C:24:59:7E:6D:0B:A1:D4"
+      ]
+    }
+  }
+]

@@ -1,0 +1,48 @@
+{
+  "packageId": "app.u1ai.thequiet",
+  "host": "quiet.u1ai.app",
+  "name": "The Quiet - Empathy Simulation",
+  "launcherName": "The Quiet",
+  "display": "standalone",
+  "themeColor": "#06070B",
+  "themeColorDark": "#06070B",
+  "navigationColor": "#06070B",
+  "navigationColorDark": "#06070B",
+  "navigationDividerColor": "#00000000",
+  "navigationDividerColorDark": "#00000000",
+  "backgroundColor": "#06070B",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://quiet.u1ai.app/icon-512.png",
+  "maskableIconUrl": "https://quiet.u1ai.app/icon-512.png",
+  "appVersionName": "2.0.0",
+  "appVersionCode": 200,
+  "shortcuts": [
+    {
+      "name": "The Climb",
+      "shortName": "Climb",
+      "url": "/?mode=climb",
+      "icon": "https://quiet.u1ai.app/icon-192.png"
+    },
+    {
+      "name": "Empathy Lab",
+      "shortName": "Lab",
+      "url": "/?mode=sandbox",
+      "icon": "https://quiet.u1ai.app/icon-192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://quiet.u1ai.app/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {
+    "playBilling": {
+      "enabled": false
+    },
+    "locationDelegation": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  }
+}

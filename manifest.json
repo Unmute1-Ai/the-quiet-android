@@ -1,0 +1,48 @@
+{
+  "name": "The Quiet - Empathy Simulation",
+  "short_name": "The Quiet",
+  "description": "An empathy simulation built with and for Deaf, hard-of-hearing, and neurodivergent communities. Navigate by feel, connect with presence.",
+  "start_url": "./index.html",
+  "id": "app.u1ai.thequiet",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "fullscreen"],
+  "orientation": "any",
+  "background_color": "#06070b",
+  "theme_color": "#06070b",
+  "categories": ["games", "education"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "The Climb",
+      "short_name": "Climb",
+      "url": "./index.html?mode=climb",
+      "description": "Challenge the 80 floors of sensory ascent"
+    },
+    {
+      "name": "Empathy Lab",
+      "short_name": "Lab",
+      "url": "./index.html?mode=sandbox",
+      "description": "Interactive neurodiversity sandbox"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "id": "app.u1ai.thequiet"
+    }
+  ],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#06070b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="THE QUIET: an empathy simulation built with and for Deaf, hard-of-hearing, and neurodivergent communities. Specially optimized for Android, Chrome, and Google Play.">
+<title>THE QUIET · Empathy Simulation</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+
+:root{
+  --ink:#06070b;
+  --fog:#d3d6df;
+  --dim:#7f8596;
+  --signal:#ffb04a;
+  --unmute:#62e6cc;
+  --panel:rgba(14,16,25,.94);
+  --line:#262b3a;
+  --danger:#ff6b6b;
+  --f-display:"Bricolage Grotesque", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", monospace;
+  --bevel-hi:rgba(255,255,255,.14);
+  --bevel-lo:rgba(0,0,0,.65);
+  --rim:linear-gradient(160deg,rgba(255,255,255,.24),rgba(255,255,255,.05) 38%,rgba(255,176,74,.15) 70%,rgba(255,255,255,.12));
+  --face:linear-gradient(165deg,#1c1f2d 0%,#12141e 46%,#0b0c14 100%);
+  color-scheme:dark;
+}
+
+html,body{
+  height:100%;margin:0;background:var(--ink);color:var(--fog);overflow:hidden;
+  font-family:var(--f-body);-webkit-tap-highlight-color:transparent;touch-action:none;
+  overscroll-behavior:none;user-select:none;-webkit-user-select:none;
+}
+
+#world{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:1}
+
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+
+/* HUD */
+#hud{
+  position:fixed;inset:0 0 auto;z-index:15;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+  padding-top:calc(env(safe-area-inset-top,0px) + 12px);padding-bottom:0;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  pointer-events:none;
+}
+#hud[hidden]{display:none!important}
+.hud-l{display:flex;flex-direction:column;gap:4px;min-width:0}
+.stage{white-space:nowrap;font-family:var(--f-display);font-weight:800;font-size:clamp(19px,5vw,28px);letter-spacing:.05em;line-height:1}
+.hint{font-size:13px;color:var(--dim);max-width:32ch;line-height:1.35}
+.hud-r{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:auto}
+.stats-box{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 12px}
+.stats{font-family:var(--f-mono);font-size:13px;text-align:right;line-height:1.45;font-variant-numeric:tabular-nums;color:var(--fog)}
+.stats b{color:var(--signal);font-weight:600}
+.hud-btns{display:flex;gap:6px}
+.chip{
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 11px;font-size:11px;white-space:nowrap;
+  font-family:var(--f-mono);letter-spacing:.06em;text-transform:uppercase;transition:transform .12s,background .12s;
+}
+.chip:active{transform:scale(.95);background:#1a1d2c}
+#hapticDot{width:12px;height:12px;border-radius:50%;background:var(--signal);opacity:.2;display:inline-block;transition:opacity .08s;box-shadow:0 0 10px rgba(255,176,74,0)}
+
+/* Virtual Touch Joystick */
+#touchJoyBase{
+  position:fixed;width:120px;height:120px;margin-left:-60px;margin-top:-60px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.2);background:radial-gradient(circle,rgba(255,255,255,.08) 0%,rgba(0,0,0,.4) 70%);
+  pointer-events:none;z-index:8;display:none;
+}
+#touchJoyThumb{
+  position:absolute;width:50px;height:50px;margin-left:35px;margin-top:35px;border-radius:50%;
+  background:linear-gradient(135deg,#ffb04a,#e58c27);box-shadow:0 4px 14px rgba(0,0,0,.6),inset 0 1px 2px rgba(255,255,255,.5);
+}
+
+/* Screens */
+.screen{
+  position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  padding-block:calc(env(safe-area-inset-top,0px) + 20px) calc(env(safe-area-inset-bottom,0px) + 20px);
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));
+  background:linear-gradient(180deg,rgba(6,7,11,.65),rgba(6,7,11,.96));overflow-y:auto;touch-action:pan-y;
+}
+.wrap{width:100%;max-width:540px;display:flex;flex-direction:column;gap:16px;margin:0 auto}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:8px}
+.eyebrow .badge{background:rgba(98,230,204,.15);color:var(--unmute);padding:2px 7px;border-radius:999px;font-size:10px}
+h1{font-family:var(--f-display);font-weight:800;font-size:clamp(48px,15vw,84px);line-height:.88;margin:0;letter-spacing:-.02em}
+h1 .thin{font-weight:300;display:block;font-size:.44em;letter-spacing:.3em;color:var(--dim);margin-bottom:.35em}
+h2{font-family:var(--f-display);font-weight:800;font-size:clamp(26px,7.5vw,38px);line-height:1;margin:0}
+.thesis{font-size:16px;line-height:1.5;max-width:38ch;margin:0}
+.thesis em{font-style:normal;color:var(--signal)}
+.modes{display:grid;gap:10px;width:100%}
+.mode{
+  position:relative;isolation:isolate;overflow:hidden;border:1px solid transparent;border-radius:18px;padding:16px 16px;
+  background:var(--face) padding-box,var(--rim) border-box;
+  box-shadow:inset 0 1px 0 var(--bevel-hi),inset 0 -2px 0 var(--bevel-lo),0 10px 24px -8px rgba(0,0,0,.75);
+  display:grid;grid-template-columns:auto 1fr;gap:4px 14px;text-align:left;align-items:baseline;
+  transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.mode:hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 14px 28px -6px rgba(0,0,0,.85),0 0 20px -6px rgba(255,176,74,.2)}
+.mode:active{transform:translateY(1px);box-shadow:inset 0 2px 6px rgba(0,0,0,.7)}
+.mode .k{
+  display:inline-grid;place-items:center;width:42px;height:34px;padding:0;border-radius:10px;align-self:center;
+  font-weight:600;font-size:12px;color:#ffcf8a;grid-row:span 2;
+  background:linear-gradient(180deg,#2b2419,#15120c);box-shadow:inset 0 1px 0 rgba(255,214,150,.3),0 0 0 1px rgba(255,176,74,.22);
+}
+.mode .t{font-family:var(--f-display);font-weight:800;font-size:19px;letter-spacing:.02em}
+.mode .d{font-size:13px;color:var(--dim);line-height:1.35}
+
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{
+  background:linear-gradient(180deg,#f5f6fa,#c8ccd6);color:#0a0b10;border:0;border-radius:999px;padding:11px 18px;
+  font-weight:700;font-size:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 4px 12px -4px rgba(0,0,0,.8);
+  transition:transform .12s,box-shadow .12s;
+}
+.btn:active{transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(0,0,0,.3)}
+.btn.ghost{
+  background:linear-gradient(180deg,#191c28,#0e1018) padding-box,var(--rim) border-box;color:var(--fog);border:1px solid transparent;
+  box-shadow:inset 0 1px 0 var(--bevel-hi),inset 0 -1px 0 var(--bevel-lo);
+}
+.btn.signal{background:linear-gradient(180deg,#ffb04a,#e58c27);color:#06070b;box-shadow:0 4px 14px rgba(255,176,74,.35)}
+.btn.unmute{background:linear-gradient(180deg,#62e6cc,#3bc0a6);color:#06070b;box-shadow:0 4px 14px rgba(98,230,204,.35)}
+
+.warn{font-size:12px;color:var(--dim);line-height:1.45;border-left:2px solid var(--signal);padding-left:10px;max-width:48ch}
+.who{font-family:var(--f-mono);font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px}
+.who b{color:var(--fog)}
+
+/* Modals & Sheets */
+.modal{
+  position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center;background:rgba(3,4,7,.75);
+  padding-block:calc(env(safe-area-inset-top,0px) + 16px) 0;touch-action:pan-y;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+}
+.sheet{
+  width:100%;max-width:580px;max-height:88%;overflow-y:auto;background:linear-gradient(180deg,#141724,#0b0d14 40%) padding-box,
+  linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 40%) border-box;
+  border:1px solid transparent;border-bottom:0;border-radius:22px 22px 0 0;
+  padding-block:20px calc(env(safe-area-inset-bottom,0px) + 24px);
+  padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:14px;box-shadow:inset 0 1px 0 var(--bevel-hi),0 -18px 45px -10px rgba(0,0,0,.9);
+}
+.sheet h3{font-family:var(--f-display);font-weight:800;font-size:24px;margin:0}
+.sheet h4{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--signal);margin:8px 0 2px}
+.sheet p,.sheet li{font-size:14px;line-height:1.5;margin:0;max-width:62ch}
+.sheet ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.kbd{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);border-radius:5px;padding:2px 6px;background:#0d0f17}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;color:var(--dim)}
+.field input{background:#07080e;border:1px solid var(--line);border-radius:10px;padding:11px 14px;font:inherit;font-size:16px;color:var(--fog)}
+
+/* Sandbox Switch Cards */
+.switch-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:480px){.switch-grid{grid-template-columns:1fr}}
+.switch-card{
+  background:rgba(20,24,35,.8);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;align-items:center;
+  justify-content:space-between;cursor:pointer;
+}
+.switch-card:hover{border-color:var(--dim)}
+.switch-card .lbl{display:flex;flex-direction:column;gap:2px}
+.switch-card .title{font-weight:700;font-size:14px}
+.switch-card .desc{font-size:11px;color:var(--dim)}
+.toggle{
+  width:44px;height:24px;background:#1e2333;border-radius:999px;position:relative;transition:background .2s;flex-shrink:0;
+}
+.toggle::after{
+  content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;
+}
+.switch-card.active{border-color:var(--signal);background:rgba(255,176,74,.08)}
+.switch-card.active .toggle{background:var(--signal)}
+.switch-card.active .toggle::after{transform:translateX(20px);background:#06070b}
+
+/* Ads UI */
+.ad-modal-overlay{
+  position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;
+  padding:20px;backdrop-filter:blur(8px);
+}
+.ad-modal-card{
+  background:#111420;border:1px solid var(--line);border-radius:20px;padding:24px;max-width:400px;width:100%;
+  text-align:center;box-shadow:0 12px 36px rgba(0,0,0,.9);
+}
+.ad-badge{
+  font-family:var(--f-mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--signal);
+  background:rgba(255,176,74,.12);padding:4px 10px;border-radius:999px;display:inline-block;margin-bottom:12px;
+}
+.ad-progress{width:100%;height:6px;background:#1e2333;border-radius:999px;overflow:hidden;margin-top:16px}
+.ad-bar{width:0%;height:100%;background:linear-gradient(90deg,var(--signal),var(--unmute))}
+
+#toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 24px);z-index:40;
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:9px 18px;font-size:13px;max-width:calc(100% - 32px);
+  box-shadow:0 8px 24px rgba(0,0,0,.85);pointer-events:none;
+}
+#padHint{
+  position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);text-align:center;z-index:9;
+  font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;pointer-events:none;
+}
+.gl{display:inline}
+.gl span{display:inline-block;white-space:pre;will-change:transform}
+
+table.board{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.board th{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+.board td{padding:9px 4px;border-bottom:1px solid #161925;font-size:14px}
+.board td.n{font-family:var(--f-mono);text-align:right}
+.board th.n{text-align:right}
+.board tr.me td{color:var(--signal)}
+.empty{padding:16px 0;color:var(--dim);font-size:13px}
+</style>
+</head>
+
+<body>
+<canvas id="world" aria-label="Game world" role="img"></canvas>
+
+<!-- Touch Joystick Indicator -->
+<div id="touchJoyBase"><div id="touchJoyThumb"></div></div>
+
+<!-- HUD -->
+<div id="hud" hidden>
+  <div class="hud-l">
+    <div class="stage" id="stageLabel" aria-live="polite"></div>
+    <div class="hint" id="hintLabel"></div>
+  </div>
+  <div class="hud-r">
+    <div class="stats-box">
+      <span id="hapticDot" title="Pulse & Vibration monitor"></span>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="hud-btns">
+      <button class="chip" id="btnAudioToggle" aria-label="Toggle Sound">Sound: ON</button>
+      <button class="chip" id="btnHow" aria-label="How to play">How to</button>
+      <button class="chip" id="btnPause" aria-label="Pause">Pause</button>
+    </div>
+  </div>
+</div>
+<div id="padHint" hidden>Drag anywhere with your thumb to move</div>
+
+<!-- Title Screen -->
+<section class="screen" id="scrTitle">
+  <div class="wrap">
+    <div class="eyebrow">
+      <span>Unmute1AI · Google Play & Chrome Edition</span>
+      <span class="badge">v2.0 PWA</span>
+    </div>
+    <h1><span class="thin">THE</span>QUIET</h1>
+    <p class="thesis">You were never broken. The world was built for a default <em>that was never you.</em></p>
+    <p class="small" style="font-size:13px;color:var(--dim);margin:0">
+      Built with and for Deaf, hard-of-hearing, and neurodivergent communities. This is not a comfort experience. The friction is the lesson.
+    </p>
+
+    <div class="modes" role="list">
+      <button class="mode" data-mode="navigate" role="listitem">
+        <span class="k">I</span>
+        <span class="t">Spectrum (Navigate)</span>
+        <span class="d">Stripped (Achromatopsia), Flooded (Overload), Unmute (Universal Design).</span>
+      </button>
+      <button class="mode" data-mode="communicate" role="listitem">
+        <span class="k">II</span>
+        <span class="t">Resonate (Communicate)</span>
+        <span class="d">Reach five figures. Rushing pushes them away. Stillness creates connection.</span>
+      </button>
+      <button class="mode" data-mode="climb" role="listitem">
+        <span class="k">III</span>
+        <span class="t">The Ascent (The Climb)</span>
+        <span class="d">80 timed levels. Past level 5 your eyes fail. Trust the haptic pulse.</span>
+      </button>
+      <button class="mode" data-mode="sandbox" role="listitem">
+        <span class="k">IV</span>
+        <span class="t">Empathy Lab (Sandbox)</span>
+        <span class="d">Toggle conditions: dyslexia jitter, tinnitus, tunnel vision, tremor, inversion.</span>
+      </button>
+    </div>
+
+    <div class="row">
+      <button class="btn signal" id="btnPlayQuick">Quick Play</button>
+      <button class="btn ghost" id="btnInstallPwa" hidden>Install on Android</button>
+      <button class="btn ghost" id="btnSettings">Settings</button>
+      <button class="btn ghost" id="btnBoard">Leaderboard</button>
+      <button class="btn ghost" id="btnHowTitle">Guide</button>
+    </div>
+
+    <div class="who" id="whoLine"></div>
+    <p class="warn">Contains dynamic shifting tones, shaking/mirrored text, screen dropout, and deceptive vibrations. Color flashes adhere strictly to photosafety guidelines (&lt;3/sec). Tap Pause anytime.</p>
+  </div>
+</section>
+
+<!-- End Screen -->
+<section class="screen" id="scrEnd" hidden>
+  <div class="wrap">
+    <div class="eyebrow" id="endEyebrow"></div>
+    <h2 id="endTitle"></h2>
+    <p class="thesis" id="endBody"></p>
+    <div class="stats-box" style="width:fit-content">
+      <div class="stats" id="endStats" style="text-align:left"></div>
+    </div>
+    <div class="row" id="endBtns"></div>
+  </div>
+</section>
+
+<!-- Pause Screen -->
+<section class="screen" id="scrPause" hidden>
+  <div class="wrap">
+    <div class="eyebrow">Simulation Paused</div>
+    <h2>Take the breath you need.</h2>
+    <p class="thesis">Sensory recalibration in progress. Resume whenever you're ready.</p>
+    <div class="row">
+      <button class="btn signal" id="btnResume">Resume</button>
+      <button class="btn ghost" id="btnSettingsPause">Comfort Settings</button>
+      <button class="btn ghost" id="btnQuit">Quit to Title</button>
+    </div>
+  </div>
+</section>
+
+<!-- Settings & Accessibility Modal -->
+<div class="modal" id="mSettings" hidden role="dialog" aria-modal="true" aria-labelledby="settT">
+  <div class="sheet">
+    <h3 id="settT">Comfort & Sensory Settings</h3>
+    <h4>Haptic & Audio Engines</h4>
+    <div class="switch-grid">
+      <div class="switch-card" id="cardVibe">
+        <div class="lbl">
+          <span class="title">Android Haptics</span>
+          <span class="desc">Vibration pulse & ground buzz</span>
+        </div>
+        <div class="toggle"></div>
+      </div>
+      <div class="switch-card" id="cardAudio">
+        <div class="lbl">
+          <span class="title">Web Audio Pulse</span>
+          <span class="desc">Procedural 55Hz sub-bass</span>
+        </div>
+        <div class="toggle"></div>
+      </div>
+    </div>
+
+    <h4>Visual & Motion Discretion</h4>
+    <div class="switch-grid">
+      <div class="switch-card" id="cardMotion">
+        <div class="lbl">
+          <span class="title">Screen Shake</span>
+          <span class="desc">Disable camera tremor</span>
+        </div>
+        <div class="toggle"></div>
+      </div>
+      <div class="switch-card" id="cardHighContrast">
+        <div class="lbl">
+          <span class="title">High Contrast Paths</span>
+          <span class="desc">Thick high-visibility edges</span>
+        </div>
+        <div class="toggle"></div>
+      </div>
+    </div>
+
+    <h4>Android Native Features</h4>
+    <div class="row" style="margin-top:6px">
+      <button class="btn ghost" id="btnFullscreen">Toggle Fullscreen</button>
+      <button class="btn ghost" id="btnWakeLock">Keep Screen Awake: ON</button>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="btn" data-close>Save & Return</button>
+    </div>
+  </div>
+</div>
+
+<!-- Empathy Lab / Sandbox Modal -->
+<div class="modal" id="mSandbox" hidden role="dialog" aria-modal="true" aria-labelledby="sandT">
+  <div class="sheet">
+    <h3 id="sandT">Empathy Lab · Sandbox</h3>
+    <p>Toggle neurodivergent and sensory conditions to experience their cognitive weight in real-time navigation.</p>
+    
+    <div class="switch-grid" style="margin-top:6px">
+      <div class="switch-card" data-fx="dyslexia">
+        <div class="lbl"><span class="title">Dyslexic Letter Drift</span><span class="desc">Rotations & letter mirroring</span></div>
+        <div class="toggle"></div>
+      </div>
+      <div class="switch-card" data-fx="tinnitus">
+        <div class="lbl"><span class="title">Tinnitus Frequency</span><span class="desc">8.4 kHz auditory persistence</span></div>
+        <div class="toggle"></div>
+      </div>
+      <div class="switch-card" data-fx="tunnel">
+        <div class="lbl"><span class="title">Tunnel Vision</span><span class="desc">Macular focal constriction</span></div>
+        <div class="toggle"></div>
+      </div>
+      <div class="switch-card" data-fx="tremor">
+        <div class="lbl"><span class="title">Motor Tremor</span><span class="desc">Input drag & latency</span></div>
+        <div class="toggle"></div>
+      </div>
+      <div class="switch-card" data-fx="invert">
+        <div class="lbl"><span class="title">Inverted Controls</span><span class="desc">Reversed horizontal axis</span></div>
+        <div class="toggle"></div>
+      </div>
+      <div class="switch-card" data-fx="doubleVision">
+        <div class="lbl"><span class="title">Diplopia (Double Vision)</span><span class="desc">Drifting ocular ghosting</span></div>
+        <div class="toggle"></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="btn signal" id="btnLaunchSandbox">Enter Sandbox Labyrinth</button>
+      <button class="btn ghost" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Guide Modal -->
+<div class="modal" id="mHow" hidden role="dialog" aria-modal="true" aria-labelledby="howT">
+  <div class="sheet">
+    <h3 id="howT">How to Experience</h3>
+    <h4>Touch Controls & Gamepads</h4>
+    <ul>
+      <li><b>Touch:</b> Drag anywhere on screen with your thumb. A virtual floating thumbstick tracks your movement.</li>
+      <li><b>Keyboard / Gamepad:</b> WASD, Arrow keys, or any Bluetooth gamepad connected to Android or Chrome. <span class="kbd">P</span> pauses, <span class="kbd">H</span> title.</li>
+      <li><b>Paths:</b> Lit paths are frictionless. Off-path terrain drags and rumbles.</li>
+    </ul>
+
+    <h4>The Haptic Truth</h4>
+    <ul>
+      <li><b>The Pulse:</b> A rhythmic clean beat that pulses faster as you near the authentic goal. It never lies.</li>
+      <li><b>Audio Companion:</b> A synchronized 55Hz sub-bass thump provides acoustic parity on desktop and ChromeOS.</li>
+      <li><b>Phantom Taps:</b> Double vibrations are sensory noise. Discern reality from illusion.</li>
+    </ul>
+
+    <h4>Google Play Features & Monetization</h4>
+    <ul>
+      <li><b>Second Breath:</b> In The Climb, use a rewarded sponsor ad to regain 20 seconds when the clock expires.</li>
+      <li><b>Install Anywhere:</b> Chrome and Android allow direct PWA installation for zero-latency offline play.</li>
+    </ul>
+    <div class="row"><button class="btn" data-close>Understood</button></div>
+  </div>
+</div>
+
+<!-- Leaderboard Modal -->
+<div class="modal" id="mBoard" hidden role="dialog" aria-modal="true" aria-labelledby="boardT">
+  <div class="sheet">
+    <h3 id="boardT">The Climb · Cloud Leaderboard</h3>
+    <div class="who" id="boardStatus">Google Play Games / Cloud Sync Active</div>
+    <div id="boardBody" style="overflow-x:auto"></div>
+    <div class="row">
+      <button class="btn ghost" id="btnSetName">Change Nickname</button>
+      <button class="btn" data-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden role="status"></div>
+
+<script src="audio-engine.js"></script>
+<script src="ads-manager.js"></script>
+<script>
+(()=>{
+"use strict";
+
+/* ---------- Global State & Storage ---------- */
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.max(a, Math.min(b,v));
+const lerp = (a,b,t) => a + (b-a)*t;
+const store = {
+  get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+};
+
+function toast(msg, ms=2800){
+  const t=$("#toast"); t.textContent=msg; t.hidden=false;
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true, ms);
+}
+const fmt = s => { s=Math.max(0,s); return Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0"); };
+
+/* ---------- PWA Installation & Service Worker ---------- */
+let deferredPrompt = null;
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(e => console.log('SW registration skipped', e));
+  });
+}
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = $("#btnInstallPwa");
+  if (btn) btn.hidden = false;
+});
+$("#btnInstallPwa").onclick = async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') toast("The Quiet installed successfully!");
+    deferredPrompt = null;
+    $("#btnInstallPwa").hidden = true;
+  }
+};
+
+/* ---------- Wake Lock API (Screen stays awake during runs) ---------- */
+let wakeLock = null;
+async function requestWakeLock() {
+  if ('wakeLock' in navigator && settings.wakeLock) {
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+  }
+}
+function releaseWakeLock() {
+  if (wakeLock) { wakeLock.release().catch(()=>{}); wakeLock = null; }
+}
+
+/* ---------- User Settings ---------- */
+const settings = {
+  vibe: store.get("q_vibe", true),
+  audio: store.get("q_audio", true),
+  motion: store.get("q_motion", true),
+  highContrast: store.get("q_contrast", false),
+  wakeLock: store.get("q_wakelock", true),
+  name: store.get("q_name", "Navigator-" + Math.floor(1000 + Math.random()*9000))
+};
+
+function updateSettingsUI() {
+  $("#cardVibe").classList.toggle("active", settings.vibe);
+  $("#cardAudio").classList.toggle("active", settings.audio);
+  $("#cardMotion").classList.toggle("active", settings.motion);
+  $("#cardHighContrast").classList.toggle("active", settings.highContrast);
+  $("#btnAudioToggle").textContent = "Sound: " + (settings.audio ? "ON" : "MUTED");
+  $("#whoLine").innerHTML = `Player: <b>${settings.name}</b> · Platform: ${/Android/i.test(navigator.userAgent)?'Android':'Chrome/Web'}`;
+}
+
+$("#cardVibe").onclick = () => { settings.vibe=!settings.vibe; store.set("q_vibe", settings.vibe); updateSettingsUI(); };
+$("#cardAudio").onclick = () => {
+  settings.audio = !settings.audio; store.set("q_audio", settings.audio);
+  if(window.QuietAudio) window.QuietAudio.toggleAudio(settings.audio);
+  updateSettingsUI();
+};
+$("#btnAudioToggle").onclick = () => { $("#cardAudio").click(); };
+$("#cardMotion").onclick = () => { settings.motion=!settings.motion; store.set("q_motion", settings.motion); updateSettingsUI(); };
+$("#cardHighContrast").onclick = () => { settings.highContrast=!settings.highContrast; store.set("q_contrast", settings.highContrast); updateSettingsUI(); };
+
+$("#btnFullscreen").onclick = () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen().catch(()=>{});
+};
+$("#btnWakeLock").onclick = () => {
+  settings.wakeLock = !settings.wakeLock;
+  store.set("q_wakelock", settings.wakeLock);
+  $("#btnWakeLock").textContent = "Keep Screen Awake: " + (settings.wakeLock ? "ON" : "OFF");
+};
+
+/* ---------- Hardware Back Button (Android popstate navigation) ---------- */
+window.history.pushState({ page: "title" }, "");
+window.addEventListener("popstate", () => {
+  const activeModal = document.querySelector(".modal:not([hidden])");
+  if (activeModal) {
+    closeModals();
+    window.history.pushState({ page: "modal_closed" }, "");
+  } else if (running && !paused) {
+    togglePause(true);
+    window.history.pushState({ page: "paused" }, "");
+  } else if (running && paused) {
+    goHome();
+  }
+});
+
+/* ---------- Dyslexia Glitch Engine ---------- */
+const MIRROR = {b:"d", d:"b", p:"q", q:"p", n:"u", u:"n", m:"w", w:"m"};
+const glitched = [];
+function glitchText(el, text, intensity=0.5){
+  el.setAttribute("aria-label", text); el.textContent = "";
+  const wrap = document.createElement("span"); wrap.className = "gl"; wrap.setAttribute("aria-hidden", "true");
+  const spans = [];
+  for (const ch of text) {
+    const s = document.createElement("span"); s.textContent = ch; s._c = ch; s._ph = Math.random()*6.28;
+    wrap.appendChild(s); spans.push(s);
+  }
+  el.appendChild(wrap);
+  const idx = glitched.findIndex(g => g.el === el);
+  const rec = { el, spans, intensity };
+  if (idx >= 0) glitched[idx] = rec; else glitched.push(rec);
+}
+let lastSwap = 0;
+function tickGlitch(t){
+  const doSwap = t - lastSwap > 380; if (doSwap) lastSwap = t;
+  for (const g of glitched) {
+    if (!g.intensity) { for (const s of g.spans){ s.style.transform = ""; s.textContent = s._c; } continue; }
+    const I = g.intensity;
+    for (const s of g.spans) {
+      const dx = Math.sin(t/420 + s._ph) * 2.2 * I, dy = Math.cos(t/500 + s._ph*1.3) * 1.5 * I;
+      const r = Math.sin(t/650 + s._ph) * 4 * I;
+      s.style.transform = `translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px) rotate(${r.toFixed(1)}deg)`;
+      if (doSwap) {
+        const low = s._c.toLowerCase();
+        if (MIRROR[low] && Math.random() < 0.28 * I) {
+          const m = MIRROR[low]; s.textContent = s._c === low ? m : m.toUpperCase();
+        } else {
+          s.textContent = s._c;
+        }
+      }
+    }
+  }
+}
+
+/* ---------- Tactile & Haptic System ---------- */
+const canVibe = typeof navigator.vibrate === "function";
+let lastPulseTime = 0;
+function triggerVibe(pattern){
+  if (canVibe && settings.vibe) {
+    try { navigator.vibrate(pattern); } catch(e){}
+  }
+}
+function dotFlash(times){
+  const d = $("#hapticDot"); if (!d) return;
+  for (let i=0; i<times; i++) {
+    setTimeout(() => { d.style.opacity = '1'; d.style.boxShadow = '0 0 12px #ffb04a'; }, i*110);
+    setTimeout(() => { d.style.opacity = '0.2'; d.style.boxShadow = 'none'; }, i*110 + 60);
+  }
+}
+function executePulse(strong=false){
+  triggerVibe(strong ? [45] : [26]);
+  lastPulseTime = performance.now();
+  dotFlash(1);
+  if (window.QuietAudio) window.QuietAudio.pulse(strong);
+  if (G) G.ring = 1;
+}
+function executePhantom(){
+  triggerVibe([15, 60, 15]);
+  dotFlash(2);
+  if (window.QuietAudio) window.QuietAudio.phantom();
+  if (G) G.ghostRing = 1;
+}
+function executeRumble(){
+  if (performance.now() - lastPulseTime > 100) triggerVibe(10);
+}
+
+/* ---------- Canvas & Offscreen Framebuffer ---------- */
+const cv = $("#world"), ctx = cv.getContext("2d");
+let offscreenCv = document.createElement("canvas"), offscreenCtx = offscreenCv.getContext("2d");
+let VW = 0, VH = 0, DPR = 1;
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  VW = innerWidth; VH = innerHeight;
+  cv.width = VW * DPR; cv.height = VH * DPR;
+  offscreenCv.width = cv.width; offscreenCv.height = cv.height;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener("resize", resize); resize();
+
+/* ---------- World Generation (Manifold k-NN Graph) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function genWorld(seed, opts){
+  const R = mulberry32(seed);
+  const W = opts.size, H = opts.size, N = opts.nodes, F = 6;
+  const nodes = [];
+  for (let i=0; i<N; i++){
+    nodes.push({ x: 70 + R()*(W-140), y: 70 + R()*(H-140), f: Array.from({length:F}, ()=>R()*2-1), id: i });
+  }
+  const emb = nodes.map(n => {
+    const v = [(n.x/W-.5)*3, (n.y/H-.5)*3, ...n.f.map(z=>z*.6)];
+    const m = Math.hypot(...v) || 1; return v.map(z=>z/m);
+  });
+  const cos = (a,b) => { let s=0; for (let i=0; i<a.length; i++) s+=a[i]*b[i]; return s; };
+  const K = 3, maxLen = opts.maxLen || 360, edgeSet = new Set(), edges = [];
+  for (let i=0; i<N; i++){
+    const cand = [];
+    for (let j=0; j<N; j++){
+      if (i===j) continue;
+      const d = Math.hypot(nodes[i].x-nodes[j].x, nodes[i].y-nodes[j].y);
+      if (d > maxLen) continue;
+      cand.push([cos(emb[i], emb[j]) - (d/maxLen)*0.35, j]);
+    }
+    cand.sort((a,b)=>b[0]-a[0]);
+    for (const [,j] of cand.slice(0,K)){
+      const k = i < j ? `${i}-${j}` : `${j}-${i}`;
+      if (!edgeSet.has(k)) { edgeSet.add(k); edges.push([i,j]); }
+    }
+  }
+  let start=0, bestD=1e9;
+  for (const n of nodes) { const d = n.x + n.y; if (d < bestD) { bestD = d; start = n.id; } }
+  let goal=0, maxD=-1;
+  for (const n of nodes) { const d = Math.hypot(n.x - nodes[start].x, n.y - nodes[start].y); if (d > maxD) { maxD = d; goal = n.id; } }
+  const decoys = [];
+  if (opts.decoys) {
+    const pool = nodes.filter(n => n.id!==goal && n.id!==start && Math.hypot(n.x-nodes[start].x, n.y-nodes[start].y) > W*0.3);
+    for (let i=0; i<opts.decoys && pool.length; i++){
+      decoys.push(pool.splice(Math.floor(R()*pool.length), 1)[0]);
+    }
+  }
+  return { W, H, nodes, edges, start: nodes[start], goal: nodes[goal], decoys, R };
+}
+function distSeg(px,py,ax,ay,bx,by){
+  const vx=bx-ax, vy=by-ay, wx=px-ax, wy=py-ay;
+  const c = vx*vx + vy*vy; let t = c ? (wx*vx + wy*vy)/c : 0;
+  t = clamp(t, 0, 1); return Math.hypot(px - (ax + vx*t), py - (ay + vy*t));
+}
+
+/* ---------- Game Modes & Stages ---------- */
+const STAGES = {
+  stripped: { label:"STRIPPED", hint:"Achromatopsia. Vision reduced to signal. Feel your way.", vision:110, bg:[12,13,17], edge:[115,118,128], node:[140,145,155], sat:0, offPath:.42, dys:.5, flood:0, goalVisible:false },
+  flooded: { label:"FLOODED", hint:"Sensory overload. 6 false lights scream. Only true signal pulses.", vision:280, bg:[32,8,42], edge:[255,90,200], node:[255,230,60], sat:1, offPath:.45, dys:1, flood:1, decoys:6, goalVisible:true },
+  unmute: { label:"UNMUTE", hint:"Universal design. The same world built to include you.", vision:680, bg:[6,20,24], edge:[98,230,204], node:[255,200,120], sat:.6, offPath:1, dys:0, flood:0, goalVisible:true },
+  communicate: { label:"RESONATE", hint:"Approach. Then breathe and stop. Rushing disperses connection.", vision:210, bg:[10,12,22], edge:[110,120,170], node:[170,175,210], offPath:.5, dys:.4, flood:0, goalVisible:false },
+  climb: { label:"THE ASCENT", hint:"Reach the beacon before your sensory window closes.", vision:220, bg:[9,10,16], edge:[150,160,200], node:[190,195,220], offPath:.45, dys:.35, flood:0, goalVisible:true },
+  sandbox: { label:"EMPATHY LAB", hint:"Test conditions. Experience how default assumptions create friction.", vision:260, bg:[14,16,24], edge:[140,160,220], node:[220,220,240], offPath:.6, dys:.6, flood:0, goalVisible:true }
+};
+
+/* ---------- Game Runtime State ---------- */
+let G = null, running = false, paused = false;
+const keys = {};
+let touchJoystick = { active: false, startX: 0, startY: 0, curX: 0, curY: 0, vx: 0, vy: 0 };
+let sandboxFX = { dyslexia: true, tinnitus: false, tunnel: false, tremor: false, invert: false, doubleVision: false };
+
+function newRun(mode){
+  if (window.QuietAudio) window.QuietAudio.ensureContext();
+  requestWakeLock();
+  G = {
+    mode, stageIdx: 0, level: 1, score: 0, t: 0, figures: [], reached: 0, failure: 0,
+    tears: [], drop: [], dropT: 0, pulseT: 0, ring: 0, shake: 0, sx: 0, sy: 0, ghostRing: 0,
+    rumbleT: 0, windA: Math.random()*6.28, mirrorT: 0, mirrored: false, blurT: 0, splits: [],
+    drifts: 0, usedRevive: false
+  };
+  cv.style.filter = "";
+  if (mode === "navigate") loadNavigate(0);
+  else if (mode === "communicate") loadCommunicate();
+  else if (mode === "sandbox") loadSandbox();
+  else loadClimb(1);
+
+  showScreen(null);
+  $("#hud").hidden = false;
+  $("#padHint").hidden = false;
+  setTimeout(() => $("#padHint").hidden = true, 4000);
+  running = true; paused = false;
+}
+
+function placeWorld(world, stageKey, extra={}){
+  G.world = world;
+  G.st = { ...STAGES[stageKey], ...extra };
+  G.p = { x: world.start.x, y: world.start.y, vx: 0, vy: 0, speed: 0 };
+  G.phantomT = 2.5 + Math.random()*2;
+  G.mirrorT = 6 + Math.random()*6;
+  glitchText($("#stageLabel"), G.st.label, G.st.dys);
+  glitchText($("#hintLabel"), G.st.hint, G.st.dys * 0.7);
+}
+
+function loadNavigate(i){
+  G.stageIdx = i; const key = ["stripped", "flooded", "unmute"][i];
+  const w = genWorld(4242, { size: 1500, nodes: 110, decoys: key==="flooded" ? 6 : 0 });
+  placeWorld(w, key); G.t = 0;
+}
+
+function loadCommunicate(){
+  const w = genWorld(777, { size: 1750, nodes: 120 });
+  placeWorld(w, "communicate");
+  const R = w.R; G.figures = [];
+  const pool = w.nodes.filter(n => Math.hypot(n.x - w.start.x, n.y - w.start.y) > 340);
+  for (let i=0; i<5; i++){
+    const n = pool.splice(Math.floor(R()*pool.length), 1)[0];
+    G.figures.push({ x: n.x, y: n.y, hx: n.x, hy: n.y, fill: 0, done: false, pushed: false });
+  }
+  G.reached = 0; G.t = 0;
+}
+
+function loadClimb(L){
+  G.level = L;
+  const size = Math.min(3200, 1000 + L*28);
+  const time = Math.round(26 + size / 70);
+  const vision = Math.max(76, 230 - L*2);
+  const w = genWorld(L<=5 ? 1000+L : (Math.random()*1e9)|0, { size, nodes: Math.min(280, 50+L*3) });
+  placeWorld(w, "climb", { vision, label: `THE ASCENT · FLOOR ${L}` });
+  G.timeLeft = time;
+  G.failure = L > 5 ? clamp((L-5)/45, 0.08, 1) : 0;
+
+  if (L === 6) toast("Vision degradation begins. Trust your tactile pulse.", 3800);
+  if (L === 10) toast("Sensory tremor detected. The ground shifts under you.", 3400);
+  if (L === 12) toast("Diplopia: You are seeing double.", 3200);
+  if (L === 20) toast("Floor 20 reached · Checkpoint logged.", 2600);
+}
+
+function loadSandbox(){
+  const w = genWorld(101, { size: 1600, nodes: 110 });
+  placeWorld(w, "sandbox");
+  if (window.QuietAudio) window.QuietAudio.setTinnitus(sandboxFX.tinnitus);
+}
+
+/* ---------- Touch Joystick & Multi-Input ---------- */
+const joyBase = $("#touchJoyBase"), joyThumb = $("#touchJoyThumb");
+
+cv.addEventListener("pointerdown", e => {
+  touchJoystick.active = true;
+  touchJoystick.startX = e.clientX; touchJoystick.startY = e.clientY;
+  touchJoystick.curX = e.clientX; touchJoystick.curY = e.clientY;
+  joyBase.style.left = `${e.clientX}px`; joyBase.style.top = `${e.clientY}px`;
+  joyBase.style.display = "block";
+  joyThumb.style.transform = "translate(0, 0)";
+  cv.setPointerCapture(e.pointerId);
+});
+
+cv.addEventListener("pointermove", e => {
+  if (!touchJoystick.active) return;
+  touchJoystick.curX = e.clientX; touchJoystick.curY = e.clientY;
+  const dx = e.clientX - touchJoystick.startX, dy = e.clientY - touchJoystick.startY;
+  const dist = Math.hypot(dx, dy), maxR = 50;
+  const angle = Math.atan2(dy, dx);
+  const clampedDist = Math.min(dist, maxR);
+  joyThumb.style.transform = `translate(${Math.cos(angle)*clampedDist}px, ${Math.sin(angle)*clampedDist}px)`;
+
+  if (dist > 8) {
+    touchJoystick.vx = (dx / dist) * Math.min(1, dist / maxR);
+    touchJoystick.vy = (dy / dist) * Math.min(1, dist / maxR);
+  } else {
+    touchJoystick.vx = 0; touchJoystick.vy = 0;
+  }
+});
+
+const endJoy = () => {
+  touchJoystick.active = false;
+  touchJoystick.vx = 0; touchJoystick.vy = 0;
+  joyBase.style.display = "none";
+};
+cv.addEventListener("pointerup", endJoy);
+cv.addEventListener("pointercancel", endJoy);
+
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (k === "escape") { closeModals(); return; }
+  if (k === "p" && running) { togglePause(); return; }
+  if (k === "h" && running) { goHome(); return; }
+  keys[k] = true;
+});
+addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener("blur", () => {
+  for (const k in keys) delete keys[k];
+  endJoy();
+});
+
+/* Gamepad API Polling */
+function pollGamepad(){
+  const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  for (const pad of pads){
+    if (!pad) continue;
+    let gx = pad.axes[0], gy = pad.axes[1];
+    if (Math.abs(gx) > 0.15 || Math.abs(gy) > 0.15) {
+      return { x: gx, y: gy };
+    }
+  }
+  return null;
+}
+
+/* ---------- Camera Scale & Coordinate Mapping ---------- */
+function camScale(){ return Math.min(VW, VH) / 620; }
+function toScreen(x, y){
+  const s = camScale();
+  return [(x - G.p.x)*s + VW/2 + G.sx, (y - G.p.y)*s + VH/2 + G.sy];
+}
+
+/* ---------- Game Loop: Update ---------- */
+function update(dt){
+  const p = G.p, st = G.st, w = G.world;
+  let ix = 0, iy = 0;
+
+  if (keys["arrowleft"] || keys["a"]) ix -= 1;
+  if (keys["arrowright"] || keys["d"]) ix += 1;
+  if (keys["arrowup"] || keys["w"]) iy -= 1;
+  if (keys["arrowdown"] || keys["s"]) iy += 1;
+
+  if (touchJoystick.active) {
+    ix += touchJoystick.vx; iy += touchJoystick.vy;
+  }
+  const pad = pollGamepad();
+  if (pad) { ix += pad.x; iy += pad.y; }
+
+  const im = Math.hypot(ix, iy);
+  if (im > 1) { ix /= im; iy /= im; }
+
+  // Directional mirroring (SandBox or Climb Floor >= 25)
+  const isMirrored = (G.mode==="sandbox" && sandboxFX.invert) || G.mirrored;
+  if (isMirrored) ix = -ix;
+
+  // Motor Tremor
+  if (G.mode === "sandbox" && sandboxFX.tremor) {
+    ix += (Math.random() - 0.5) * 0.45;
+    iy += (Math.random() - 0.5) * 0.45;
+  }
+
+  // Path friction & speed calculation
+  let nearDist = 1e9;
+  for (const [a,b] of w.edges) {
+    const d = distSeg(p.x, p.y, w.nodes[a].x, w.nodes[a].y, w.nodes[b].x, w.nodes[b].y);
+    if (d < nearDist) nearDist = d;
+  }
+  G.onPath = nearDist < 18;
+  const mult = G.onPath ? 1 : st.offPath;
+  const targetSpeed = 220 * mult;
+
+  p.vx = lerp(p.vx, ix * targetSpeed, Math.min(1, dt * 8));
+  p.vy = lerp(p.vy, iy * targetSpeed, Math.min(1, dt * 8));
+
+  p.x = clamp(p.x + p.vx * dt, 15, w.W - 15);
+  p.y = clamp(p.y + p.vy * dt, 15, w.H - 15);
+  p.speed = Math.hypot(p.vx, p.vy);
+  G.t += dt;
+
+  if (!G.onPath && p.speed > 40) {
+    G.rumbleT -= dt;
+    if (G.rumbleT <= 0) { G.rumbleT = 0.26; executeRumble(); }
+  }
+
+  // Beacon Pulse Interval
+  let tx = w.goal.x, ty = w.goal.y;
+  if (G.mode === "communicate") {
+    let bd = 1e9;
+    for (const f of G.figures) {
+      if (f.done) continue;
+      const d = Math.hypot(f.x - p.x, f.y - p.y);
+      if (d < bd) { bd = d; tx = f.x; ty = f.y; }
+    }
+  }
+  const dist = Math.hypot(tx - p.x, ty - p.y);
+  const span = Math.max(w.W, w.H) * 0.9;
+  const interval = lerp(160, 1400, clamp(dist/span, 0, 1));
+  G.pulseT -= dt * 1000;
+  if (G.pulseT <= 0) {
+    G.pulseT = interval;
+    executePulse(dist < 110);
+  }
+  G.ring = Math.max(0, G.ring - dt * 2.5);
+  G.ghostRing = Math.max(0, G.ghostRing - dt * 2.5);
+
+  // Mode Specific Logic
+  if (G.mode === "communicate") {
+    for (const f of G.figures) {
+      if (f.done) continue;
+      const d = Math.hypot(f.x - p.x, f.y - p.y);
+      if (d < 170 && p.speed > 115) {
+        if (!f.pushed) { f.pushed = true; G.drifts++; }
+        const a = Math.atan2(f.y - p.y, f.x - p.x);
+        f.x = clamp(f.x + Math.cos(a)*90*dt, 20, w.W - 20);
+        f.y = clamp(f.y + Math.sin(a)*90*dt, 20, w.H - 20);
+        f.fill = Math.max(0, f.fill - dt * 0.8);
+      } else {
+        f.pushed = false;
+        f.x = lerp(f.x, f.hx, dt * 0.15); f.y = lerp(f.y, f.hy, dt * 0.15);
+      }
+
+      if (d < 82 && p.speed < 28) {
+        f.fill = Math.min(1, f.fill + dt / 2.8);
+        if (f.fill >= 1) {
+          f.done = true; f.doneAt = G.t; G.reached++;
+          executePulse(true);
+          if (window.QuietAudio) window.QuietAudio.connectChime(G.reached - 1);
+          toast(G.reached === 5 ? "Resonance achieved. All five connected." : `Connected ${G.reached} of 5 figures.`);
+        }
+      } else if (d >= 82) {
+        f.fill = Math.max(0, f.fill - dt * 0.25);
+      }
+    }
+    if (G.reached >= 5) { finish("comm"); return; }
+  } else {
+    if (dist < 28) {
+      if (G.mode === "navigate") {
+        executePulse(true); G.splits.push(G.t);
+        if (G.stageIdx < 2) {
+          loadNavigate(G.stageIdx + 1);
+          toast(["", "Entering Flooded: Sensory Overload", "Entering Unmute: Rebuilt for You"][G.stageIdx], 2600);
+        } else {
+          finish("nav");
+        }
+      } else if (G.mode === "sandbox") {
+        toast("Beacon reached in Empathy Sandbox! Reshuffling labyrinth.", 2000);
+        loadSandbox();
+      } else {
+        const bonus = Math.round(G.timeLeft * 10 + G.level * 50);
+        G.score += bonus; executePulse(true);
+        if (G.level >= 80) { finish("climbWin"); return; }
+        if (G.level % 10 === 0 && window.AdsManager) {
+          window.AdsManager.showInterstitial('checkpoint_floor');
+        }
+        toast(`Floor ${G.level} cleared · +${bonus} pts`, 1600);
+        loadClimb(G.level + 1);
+      }
+      return;
+    }
+    if (G.mode === "climb") {
+      G.timeLeft -= dt;
+      if (G.timeLeft <= 0) {
+        handleClimbTimeout();
+        return;
+      }
+    }
+  }
+
+  // Visual Tears & Drops Schedule
+  if (G.failure > 0) {
+    G.dropT -= dt;
+    if (G.dropT <= 0) {
+      G.dropT = 0.4;
+      const n = Math.round(G.failure * 8);
+      G.drop = Array.from({length:n}, () => [Math.random()*VW, Math.random()*VH, lerp(40,150,Math.random()), lerp(30,90,Math.random())]);
+      G.tears = Array.from({length:Math.round(G.failure*3)}, () => [Math.random()*VH, lerp(8,36,Math.random()), (Math.random()-.5)*70*G.failure]);
+    }
+  }
+}
+
+/* Second Breath (Rewarded Ad Continue) */
+function handleClimbTimeout(){
+  if (!G.usedRevive && window.AdsManager) {
+    G.usedRevive = true;
+    togglePause(true);
+    window.AdsManager.showRewarded('second_breath', () => {
+      G.timeLeft = 20;
+      togglePause(false);
+      toast("Second Breath granted: +20 seconds!", 3000);
+    }, () => {
+      finish("climbOver");
+    });
+  } else {
+    finish("climbOver");
+  }
+}
+
+/* ---------- Game Loop: Render ---------- */
+function render(time){
+  const st = G.st, w = G.world, p = G.p, s = camScale();
+
+  if (settings.motion && G.shake > 0) {
+    G.sx = (Math.random() - 0.5) * G.shake * 4;
+    G.sy = (Math.random() - 0.5) * G.shake * 4;
+  } else { G.sx = 0; G.sy = 0; }
+
+  // Draw to Offscreen Canvas for stable post-processing (avoids canvas self-copy bug)
+  offscreenCtx.fillStyle = `rgb(${st.bg[0]}, ${st.bg[1]}, ${st.bg[2]})`;
+  offscreenCtx.fillRect(0, 0, offscreenCv.width, offscreenCv.height);
+
+  offscreenCtx.save();
+  offscreenCtx.scale(DPR, DPR);
+
+  // Edges / Paths
+  offscreenCtx.lineCap = "round";
+  for (const [a,b] of w.edges) {
+    const [ax,ay] = toScreen(w.nodes[a].x, w.nodes[a].y);
+    const [bx,by] = toScreen(w.nodes[b].x, w.nodes[b].y);
+    if ((ax<-60&&bx<-60)||(ax>VW+60&&bx>VW+60)||(ay<-60&&by<-60)||(ay>VH+60&&by>VH+60)) continue;
+
+    offscreenCtx.strokeStyle = settings.highContrast ? "#62e6cc" : `rgba(${st.edge[0]},${st.edge[1]},${st.edge[2]},0.45)`;
+    offscreenCtx.lineWidth = (settings.highContrast ? 6 : (G.mode==="navigate"&&G.stageIdx===2?5:3.2)) * s * 0.9;
+    offscreenCtx.beginPath(); offscreenCtx.moveTo(ax, ay); offscreenCtx.lineTo(bx, by); offscreenCtx.stroke();
+  }
+
+  // Nodes
+  for (const n of w.nodes) {
+    const [x,y] = toScreen(n.x, n.y);
+    if (x<-20||y<-20||x>VW+20||y>VH+20) continue;
+    offscreenCtx.fillStyle = `rgba(${st.node[0]},${st.node[1]},${st.node[2]},0.65)`;
+    offscreenCtx.beginPath(); offscreenCtx.arc(x, y, 2.8*s, 0, 6.29); offscreenCtx.fill();
+  }
+
+  // Decoy Beacons
+  for (const d of w.decoys) {
+    const [x,y] = toScreen(d.x, d.y);
+    drawBeacon(offscreenCtx, x, y, s, time, [255,230,60], false);
+  }
+
+  // Authentic Beacon Goal
+  if (G.mode !== "communicate") {
+    const [gx,gy] = toScreen(w.goal.x, w.goal.y);
+    if (st.goalVisible || Math.hypot(w.goal.x - p.x, w.goal.y - p.y) < st.vision * 0.8) {
+      drawBeacon(offscreenCtx, gx, gy, s, time, G.mode==="navigate"&&G.stageIdx===2?[98,230,204]:[255,176,74], true);
+    }
+  }
+
+  // Figures (Communicate Mode)
+  for (const f of G.figures) {
+    const [x,y] = toScreen(f.x, f.y);
+    offscreenCtx.fillStyle = f.done ? "rgba(98,230,204,.95)" : "rgba(220,224,240,.9)";
+    offscreenCtx.beginPath(); offscreenCtx.arc(x, y - 9*s, 5.5*s, 0, 6.29); offscreenCtx.fill();
+    offscreenCtx.beginPath(); offscreenCtx.ellipse(x, y + 5*s, 7*s, 10*s, 0, 0, 6.29); offscreenCtx.fill();
+
+    if (!f.done) {
+      offscreenCtx.strokeStyle = "rgba(255,176,74,0.35)"; offscreenCtx.lineWidth = 1.5;
+      offscreenCtx.beginPath(); offscreenCtx.arc(x, y, 82*s, 0, 6.29); offscreenCtx.stroke();
+      if (f.fill > 0) {
+        offscreenCtx.strokeStyle = "rgba(255,176,74,0.95)"; offscreenCtx.lineWidth = 4;
+        offscreenCtx.beginPath(); offscreenCtx.arc(x, y, 82*s, -1.57, -1.57 + f.fill * 6.283); offscreenCtx.stroke();
+      }
+    }
+  }
+
+  // Player Character
+  offscreenCtx.fillStyle = G.onPath ? "#ffffff" : "rgba(255,255,255,.75)";
+  offscreenCtx.beginPath(); offscreenCtx.arc(VW/2, VH/2, 7.5*s, 0, 6.29); offscreenCtx.fill();
+
+  // Fog of War Mask
+  const vr = st.vision * s;
+  const fog = offscreenCtx.createRadialGradient(VW/2, VH/2, vr*0.35, VW/2, VH/2, vr);
+  fog.addColorStop(0, "rgba(0,0,0,0)");
+  fog.addColorStop(1, "rgba(6,7,11,0.98)");
+  offscreenCtx.fillStyle = fog; offscreenCtx.fillRect(0, 0, VW, VH);
+
+  offscreenCtx.restore();
+
+  // Primary Canvas Blit
+  ctx.clearRect(0, 0, VW, VH);
+  ctx.drawImage(offscreenCv, 0, 0, VW, VH);
+
+  // Diplopia / Double Vision (Uses stable offscreen buffer)
+  if ((G.mode==="sandbox" && sandboxFX.doubleVision) || (G.mode==="climb" && G.level >= 12)) {
+    const ox = 12 * Math.sin(time / 1600), oy = 6 * Math.cos(time / 1400);
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.drawImage(offscreenCv, ox, oy, VW, VH);
+    ctx.restore();
+  }
+
+  // Tunnel Vision (Macular Degeneration Mask in Sandbox)
+  if (G.mode === "sandbox" && sandboxFX.tunnel) {
+    const tg = ctx.createRadialGradient(VW/2, VH/2, 50, VW/2, VH/2, 140);
+    tg.addColorStop(0, "rgba(0,0,0,0)"); tg.addColorStop(1, "rgba(0,0,0,0.94)");
+    ctx.fillStyle = tg; ctx.fillRect(0, 0, VW, VH);
+  }
+
+  // Visual Failure: Dropouts & Tears (Climb floors > 5)
+  if (G.failure > 0) {
+    ctx.fillStyle = "#000";
+    for (const [x,y,w2,h2] of G.drop) ctx.fillRect(x, y, w2, h2);
+    ctx.fillStyle = `rgba(0,0,0,${(G.failure*0.5).toFixed(2)})`;
+    ctx.fillRect(0, 0, VW, VH);
+  }
+
+  // Visual Fallback Haptic Rings (Never detach or fail)
+  if (G.ghostRing > 0) {
+    ctx.strokeStyle = `rgba(255,176,74,${(G.ghostRing*0.5).toFixed(2)})`; ctx.lineWidth = 1.4;
+    for (const k of [0, 10]) {
+      ctx.beginPath(); ctx.arc(VW/2, VH/2, (18 + k + (1-G.ghostRing)*32)*s, 0, 6.29); ctx.stroke();
+    }
+  }
+  if (G.ring > 0) {
+    ctx.strokeStyle = `rgba(255,176,74,${(G.ring*0.9).toFixed(2)})`; ctx.lineWidth = 3.2;
+    ctx.beginPath(); ctx.arc(VW/2, VH/2, (15 + (1-G.ring)*36)*s, 0, 6.29); ctx.stroke();
+  }
+}
+
+function drawBeacon(c, x, y, s, time, col, isReal){
+  const pul = (Math.sin(time / (isReal ? 300 : 280)) + 1) / 2;
+  const r = (11 + pul * 6) * s;
+  const g = c.createRadialGradient(x, y, 0, x, y, r * 3.4);
+  g.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},0.85)`);
+  g.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, r*3.4, 0, 6.29); c.fill();
+  c.fillStyle = "#ffffff"; c.beginPath(); c.arc(x, y, 4*s, 0, 6.29); c.fill();
+}
+
+/* ---------- HUD Updater ---------- */
+function updateHUD(){
+  const statsEl = $("#stats"); let h = "";
+  if (G.mode === "climb") h = `<b>${fmt(G.timeLeft)}</b><br>FLR ${G.level}/80 · ${G.score}`;
+  else if (G.mode === "communicate") h = `<b>${G.reached}/5</b> present<br>${fmt(G.t)}`;
+  else if (G.mode === "sandbox") h = `<b>LAB RUN</b><br>${fmt(G.t)}`;
+  else h = `<b>${G.stageIdx+1}/3</b><br>${fmt(G.t)}`;
+
+  if (G.mirrored || (G.mode==="sandbox" && sandboxFX.invert)) h += "<br><b>⇄</b> swapped";
+  if (statsEl._h !== h) { statsEl.innerHTML = h; statsEl._h = h; }
+}
+
+/* ---------- Main Loop ---------- */
+let lastFrameTime = performance.now();
+function gameLoop(now){
+  const dt = Math.min(0.05, (now - lastFrameTime)/1000);
+  lastFrameTime = now;
+
+  if (running && !paused) {
+    update(dt);
+    if (running) { render(now); updateHUD(); }
+  } else if (!running) {
+    idleTitleRender(now);
+  }
+
+  tickGlitch(now);
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+
+function idleTitleRender(t){
+  ctx.fillStyle = "#06070b"; ctx.fillRect(0, 0, VW, VH);
+  const s = Math.min(VW, VH) / 750;
+  const cx = VW/2 + Math.sin(t/8000)*120, cy = VH/2 + Math.cos(t/9000)*90;
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 140*s);
+  g.addColorStop(0, "rgba(255,176,74,0.18)"); g.addColorStop(1, "rgba(255,176,74,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, 140*s, 0, 6.29); ctx.fill();
+}
+
+/* ---------- Completion & Endings ---------- */
+function finish(kind){
+  running = false; releaseWakeLock();
+  $("#hud").hidden = true; cv.style.filter = "";
+
+  const E = {
+    nav: ["Navigate · Spectrum Complete", "The world didn't change. Access did.", "Same geometry, three perspectives: Stripped of signal, flooded with noise, then rebuilt with universal design."],
+    comm: ["Resonate · Complete", "Presence over pace.", G.drifts === 0 ? "You moved with gentle intent. Every person remained. Communication begins with patience." : `You rushed past figures ${G.drifts} times, causing dispersion. Stillness reunited everyone.`],
+    climbOver: ["The Ascent · Sensory Horizon", `You climbed ${G.level - 1} floor${G.level-1===1?'':'s'}.`, "Past floor 5, optical reality degrades. The tactile pulse becomes your beacon. That friction is daily life for millions."],
+    climbWin: ["The Ascent · Summit Reached", "80 Floors Conquered by Feel.", "You navigated the dark, sensory fatigue, and deceptive noise. You were never broken."]
+  }[kind];
+
+  $("#endEyebrow").textContent = E[0];
+  glitchText($("#endTitle"), E[1], 0);
+  $("#endBody").textContent = E[2];
+
+  const btns = $("#endBtns"); btns.innerHTML = "";
+  const mkBtn = (txt, cls, fn) => {
+    const b = document.createElement("button"); b.className = "btn " + cls; b.textContent = txt; b.onclick = fn;
+    btns.appendChild(b); return b;
+  };
+
+  mkBtn("Play Again", "signal", () => newRun(G.mode));
+  if (kind === "nav") mkBtn("Try Resonate", "ghost", () => newRun("communicate"));
+  if (kind === "comm") mkBtn("The Ascent", "ghost", () => newRun("climb"));
+  mkBtn("Share Experience", "ghost", () => shareRun(kind));
+  mkBtn("Home", "ghost", goHome);
+
+  $("#endStats").innerHTML = G.mode === "climb" ? `Score: <b>${G.score}</b> · Floor: <b>${G.level}</b>` : `Time: <b>${fmt(G.t)}</b>`;
+  showScreen("#scrEnd");
+
+  if (G.mode === "climb" && G.score > 0) saveScore(G.level, G.score);
+}
+
+function shareRun(kind){
+  const text = `THE QUIET · Empathy Simulation: Finished ${kind} in a world built for another default. #Accessibility #Unmute1AI`;
+  if (navigator.share) navigator.share({ text }).catch(()=>{});
+  else { navigator.clipboard.writeText(text); toast("Score copied to clipboard!"); }
+}
+
+function saveScore(level, score){
+  const scores = store.get("q_scores", []);
+  scores.push({ name: settings.name, level, score, ts: Date.now() });
+  scores.sort((a,b) => b.score - a.score);
+  store.set("q_scores", scores.slice(0, 30));
+}
+
+/* ---------- Screens & Modal Navigation ---------- */
+function showScreen(id){
+  for (const s of document.querySelectorAll(".screen")) s.hidden = true;
+  if (id) $(id).hidden = false;
+  if (id === "#scrTitle") { running = false; releaseWakeLock(); $("#hud").hidden = true; }
+}
+
+function openModal(id){
+  if (running && !paused) togglePause(true);
+  $(id).hidden = false;
+}
+function closeModals(){
+  for (const m of document.querySelectorAll(".modal")) m.hidden = true;
+}
+for (const b of document.querySelectorAll("[data-close]")) b.onclick = closeModals;
+
+function togglePause(force){
+  if (!running) return;
+  paused = force === true ? true : !paused;
+  $("#scrPause").hidden = !paused;
+  for (const k in keys) delete keys[k];
+  endJoy();
+}
+$("#btnPause").onclick = () => togglePause();
+$("#btnResume").onclick = () => togglePause();
+
+function goHome(){
+  paused = false; closeModals(); showScreen("#scrTitle");
+}
+$("#btnQuit").onclick = goHome;
+$("#btnHow").onclick = $("#btnHowTitle").onclick = () => openModal("#mHow");
+$("#btnSettings").onclick = $("#btnSettingsPause").onclick = () => { updateSettingsUI(); openModal("#mSettings"); };
+$("#btnPlayQuick").onclick = () => newRun("navigate");
+
+for (const b of document.querySelectorAll(".mode")) {
+  b.onclick = () => {
+    const m = b.dataset.mode;
+    if (m === "sandbox") openModal("#mSandbox");
+    else newRun(m);
+  };
+}
+
+/* Sandbox Toggles */
+for (const card of document.querySelectorAll("#mSandbox .switch-card")) {
+  const fx = card.dataset.fx;
+  card.classList.toggle("active", !!sandboxFX[fx]);
+  card.onclick = () => {
+    sandboxFX[fx] = !sandboxFX[fx];
+    card.classList.toggle("active", sandboxFX[fx]);
+    if (fx === "tinnitus" && window.QuietAudio) window.QuietAudio.setTinnitus(sandboxFX.tinnitus);
+  };
+}
+$("#btnLaunchSandbox").onclick = () => { closeModals(); newRun("sandbox"); };
+
+/* Leaderboard */
+$("#btnBoard").onclick = () => {
+  openModal("#mBoard");
+  const body = $("#boardBody");
+  const scores = store.get("q_scores", []);
+  if (!scores.length) {
+    body.innerHTML = '<div class="empty">No runs registered yet. Complete a climb to claim the summit.</div>';
+    return;
+  }
+  let h = '<table class="board"><thead><tr><th>#</th><th>Navigator</th><th class="n">Floor</th><th class="n">Score</th></tr></thead><tbody>';
+  scores.forEach((s, i) => {
+    h += `<tr><td>${i+1}</td><td>${s.name}</td><td class="n">${s.level}</td><td class="n">${s.score}</td></tr>`;
+  });
+  h += '</tbody></table>'; body.innerHTML = h;
+};
+
+$("#btnSetName").onclick = () => {
+  const n = prompt("Enter Navigator Nickname (2-16 chars):", settings.name);
+  if (n && n.trim().length >= 2) {
+    settings.name = n.trim().slice(0, 16);
+    store.set("q_name", settings.name);
+    updateSettingsUI();
+  }
+};
+
+updateSettingsUI();
+showScreen("#scrTitle");
+})();
+</script>
+</body>
+</html>
